@@ -61,18 +61,24 @@ decl_module! {
 			debug::warn!("Hello World from offchain workers!");
 			debug::warn!("Something is: {:?}", something);
 
-			let block_hash = <system::Module<T>>::block_hash(block_number);
+			let block_hash = <system::Module<T>>::block_hash(block_number - 1.into());
 			debug::warn!("Current block is: {:?} ({:?})", block_number, block_hash);
 
-			if let Err(e) = Self::fetch_btc_price() {
-				debug::warn!("Error fetching BTC price: {:?}", e);
-			}
+			let price = match Self::fetch_btc_price() {
+				Ok(price) => price,
+				Err(_) => {
+					debug::warn!("Error fetching BTC price.");
+					return
+				}
+			};
+
+			debug::warn!("Got BTC price: {} cents", price);
 		}
 	}
 }
 
 impl<T: Trait> Module<T> {
-	fn fetch_btc_price() -> Result<(), http::Error> {
+	fn fetch_btc_price() -> Result<u64, http::Error> {
 		let pending = http::Request::get(
 			"https://min-api.cryptocompare.com/data/price?fsym=BTC&tsyms=USD"
 		).send().map_err(|_| http::Error::IoError)?;
@@ -83,10 +89,26 @@ impl<T: Trait> Module<T> {
 			return Err(http::Error::Unknown);
 		}
 
+		const START_IDX: usize = "{\"USD\":".len();
 		let body = response.body().collect::<Vec<u8>>();
-		debug::warn!("Body: {:?}", core::str::from_utf8(&body).ok());
+		let json = match core::str::from_utf8(&body) {
+			Ok(json) if json.len() > START_IDX => json,
+			_ => {
+				debug::warn!("Unexpected (non-utf8 or too short) response received: {:?}", body);
+				return Err(http::Error::Unknown);
+			}
+		};
 
-		Ok(())
+		let price = &json[START_IDX .. json.len() - 1];
+		let pricef: f64 = match price.parse() {
+			Ok(pricef) => pricef,
+			Err(_) => {
+				debug::warn!("Unparsable price: {:?}", price);
+				return Err(http::Error::Unknown);
+			}
+		};
+
+		Ok((pricef * 100.) as u64)
 	}
 }
 
