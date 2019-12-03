@@ -15,7 +15,7 @@ use sp_runtime::{
 	impl_opaque_keys, MultiSignature
 };
 use sp_runtime::traits::{
-	NumberFor, BlakeTwo256, Block as BlockT, StaticLookup, Verify, ConvertInto, IdentifyAccount
+	self, NumberFor, BlakeTwo256, Block as BlockT, StaticLookup, Verify, ConvertInto, IdentifyAccount
 };
 use sp_api::impl_runtime_apis;
 use aura_primitives::sr25519::AuthorityId as AuraId;
@@ -234,6 +234,41 @@ impl sudo::Trait for Runtime {
 /// Used for the module template in `./template.rs`
 impl template::Trait for Runtime {
 	type Event = Event;
+	type Call = Call;
+	type SubmitTransaction = system::offchain::TransactionSubmitter<
+		template::crypto::Public,
+		Runtime,
+		UncheckedExtrinsic
+	>;
+}
+
+impl system::offchain::CreateTransaction<Runtime, UncheckedExtrinsic> for Runtime {
+	type Public = <Signature as Verify>::Signer;
+	type Signature = Signature;
+
+	fn create_transaction<TSigner: system::offchain::Signer<Self::Public, Self::Signature>>(
+		call: Call,
+		public: Self::Public,
+		account: AccountId,
+		index: Index,
+	) -> Option<(Call, <UncheckedExtrinsic as traits::Extrinsic>::SignaturePayload)> {
+		let period = 1 << 8;
+		let current_block = System::block_number() as u64;
+		let tip = 0;
+		let extra: SignedExtra = (
+			system::CheckVersion::<Runtime>::new(),
+			system::CheckGenesis::<Runtime>::new(),
+			system::CheckEra::<Runtime>::from(generic::Era::mortal(period, current_block)),
+			system::CheckNonce::<Runtime>::from(index),
+			system::CheckWeight::<Runtime>::new(),
+			transaction_payment::ChargeTransactionPayment::<Runtime>::from(tip),
+		);
+		let raw_payload = SignedPayload::new(call, extra).ok()?;
+		let signature = TSigner::sign(public, &raw_payload)?;
+		let address = Indices::unlookup(account);
+		let (call, extra, _) = raw_payload.deconstruct();
+		Some((call, (address, signature, extra)))
+	}
 }
 
 construct_runtime!(
@@ -275,6 +310,8 @@ pub type SignedExtra = (
 	system::CheckWeight<Runtime>,
 	transaction_payment::ChargeTransactionPayment<Runtime>
 );
+/// The payload being signed in transactions.
+pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
 /// Unchecked extrinsic type as expected by this runtime.
 pub type UncheckedExtrinsic = generic::UncheckedExtrinsic<Address, Call, Signature, SignedExtra>;
 /// Extrinsic type that has already been checked.

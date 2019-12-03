@@ -9,9 +9,18 @@
 /// https://github.com/paritytech/substrate/blob/master/frame/example/src/lib.rs
 
 use support::{decl_module, decl_storage, decl_event, dispatch, debug};
-use system::ensure_signed;
+use system::{ensure_signed, offchain};
 use sp_runtime::offchain::http;
 use rstd::vec::Vec;
+
+use primitives::crypto::KeyTypeId;
+pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"btc!");
+
+pub mod crypto {
+	use super::KEY_TYPE;
+	use sp_runtime::app_crypto::{app_crypto, sr25519};
+	app_crypto!(sr25519, KEY_TYPE);
+}
 
 /// The module's configuration trait.
 pub trait Trait: system::Trait {
@@ -19,6 +28,12 @@ pub trait Trait: system::Trait {
 
 	/// The overarching event type.
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
+
+	/// The overarching event type.
+	type Call: From<Call<Self>>;
+
+	/// Transaction submitter.
+	type SubmitTransaction: offchain::SubmitSignedTransaction<Self, <Self as Trait>::Call>;
 }
 
 // This module's storage items.
@@ -65,20 +80,24 @@ decl_module! {
 			debug::warn!("Current block is: {:?} ({:?})", block_number, block_hash);
 
 			let price = match Self::fetch_btc_price() {
-				Ok(price) => price,
+				Ok(price) => {
+					debug::warn!("Got BTC price: {} cents", price);
+					price
+				},
 				Err(_) => {
 					debug::warn!("Error fetching BTC price.");
+					// TODO [ToDr] What to do here?
 					return
 				}
 			};
 
-			debug::warn!("Got BTC price: {} cents", price);
+			Self::submit_btc_price_on_chain(price);
 		}
 	}
 }
 
 impl<T: Trait> Module<T> {
-	fn fetch_btc_price() -> Result<u64, http::Error> {
+	fn fetch_btc_price() -> Result<u32, http::Error> {
 		let pending = http::Request::get(
 			"https://min-api.cryptocompare.com/data/price?fsym=BTC&tsyms=USD"
 		).send().map_err(|_| http::Error::IoError)?;
@@ -108,7 +127,24 @@ impl<T: Trait> Module<T> {
 			}
 		};
 
-		Ok((pricef * 100.) as u64)
+		Ok((pricef * 100.) as u32)
+	}
+
+	fn submit_btc_price_on_chain(price: u32) {
+		use sp_runtime::RuntimeAppPublic;
+		use system::offchain::SubmitSignedTransaction;
+
+		let call = Call::do_something(price);
+
+		let res = T::SubmitTransaction::submit_signed(
+			//crypto::Public::all(),
+			Vec::new(),
+			call
+		);
+
+		if res.is_empty() {
+			debug::error!("No local accounts found.");
+		}
 	}
 }
 
