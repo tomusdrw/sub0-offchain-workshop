@@ -52,6 +52,17 @@ decl_module! {
 			Self::deposit_event(RawEvent::SomethingStored(something, who));
 			Ok(())
 		}
+
+		fn offchain_worker() {
+			//debug::RuntimeLogger::init();
+			let something = Something::get();
+			debug::info!("Hello World from offchain workers!");
+			debug::info!("Something is: {:?}", something);
+
+			let block_number = <system::Module<T>>::block_number();
+			let block_hash = <system::Module<T>>::block_hash(block_number);
+			debug::info!("Current block is: {:?} ({:?})", block_number, block_hash);
+		}
 	}
 }
 
