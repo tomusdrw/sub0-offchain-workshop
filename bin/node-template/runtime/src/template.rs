@@ -39,10 +39,7 @@ pub trait Trait: system::Trait {
 // This module's storage items.
 decl_storage! {
 	trait Store for Module<T: Trait> as TemplateModule {
-		// Just a dummy storage item.
-		// Here we are declaring a StorageValue, `Something` as a Option<u32>
-		// `get(fn something)` is the default getter which returns either the stored `u32` or `None` if nothing stored
-		Something get(fn something): Option<u32>;
+		Prices get(fn prices): Vec<u32>;
 	}
 }
 
@@ -54,31 +51,42 @@ decl_module! {
 		// this is needed only if you are using events in your module
 		fn deposit_event() = default;
 
-		// Just a dummy entry point.
-		// function that can be called by the external world as an extrinsics call
-		// takes a parameter of the type `AccountId`, stores it and emits an event
-		pub fn do_something(origin, something: u32) -> dispatch::Result {
-			// TODO: You only need this if you want to check it was signed.
+		pub fn submit_btc_price(origin, price: u32) -> dispatch::Result {
 			let who = ensure_signed(origin)?;
 
-			// TODO: Code to execute when something calls this.
-			// For example: the following line stores the passed in u32 in the storage
-			Something::put(something);
+			debug::info!("Adding to the average: {}", price);
+			let average = Prices::mutate(|prices| {
+				const MAX_LEN: usize = 64;
 
-			debug::info!("Setting something to: {}", something);
+				if prices.len() < MAX_LEN {
+					prices.push(price);
+				} else {
+					prices[price as usize % MAX_LEN] = price;
+				}
 
+				// TODO Whatchout for overflows
+				prices.iter().sum::<u32>() / prices.len() as u32
+			});
+			debug::info!("Current average price is: {}", average);
 			// here we are raising the Something event
-			Self::deposit_event(RawEvent::SomethingStored(something, who));
+			Self::deposit_event(RawEvent::NewPrice(price, who));
 			Ok(())
 		}
 
 		fn offchain_worker(block_number: T::BlockNumber) {
 			debug::RuntimeLogger::init();
-			let something = Something::get();
+			let average: Option<u32> = {
+				let prices = Prices::get();
+				if prices.is_empty() {
+					None
+				} else {
+					Some(prices.iter().sum::<u32>() / prices.len() as u32)
+				}
+			};
 			debug::warn!("Hello World from offchain workers!");
-			debug::warn!("Something is: {:?}", something);
+			debug::warn!("Current price of BTC is: {:?}", average);
 
-			let block_hash = <system::Module<T>>::block_hash(block_number - 1.into());
+			let block_hash = <system::Module<T>>::block_hash(block_number - 1);
 			debug::warn!("Current block is: {:?} ({:?})", block_number, block_hash);
 
 			let price = match Self::fetch_btc_price() {
@@ -135,7 +143,7 @@ impl<T: Trait> Module<T> {
 	fn submit_btc_price_on_chain(price: u32) {
 		use system::offchain::SubmitSignedTransaction;
 
-		let call = Call::do_something(price);
+		let call = Call::submit_btc_price(price);
 		let res = T::SubmitTransaction::submit_signed(call);
 
 		if res.is_empty() {
@@ -148,10 +156,7 @@ impl<T: Trait> Module<T> {
 
 decl_event!(
 	pub enum Event<T> where AccountId = <T as system::Trait>::AccountId {
-		// Just a dummy event.
-		// Event `Something` is declared with a parameter of the type `u32` and `AccountId`
-		// To emit this event, we call the deposit funtion, from our runtime funtions
-		SomethingStored(u32, AccountId),
+		NewPrice(u32, AccountId),
 	}
 );
 
