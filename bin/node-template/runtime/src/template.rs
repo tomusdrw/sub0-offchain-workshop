@@ -65,6 +65,8 @@ decl_module! {
 			// For example: the following line stores the passed in u32 in the storage
 			Something::put(something);
 
+			debug::info!("Setting something to: {}", something);
+
 			// here we are raising the Something event
 			Self::deposit_event(RawEvent::SomethingStored(something, who));
 			Ok(())
@@ -131,19 +133,15 @@ impl<T: Trait> Module<T> {
 	}
 
 	fn submit_btc_price_on_chain(price: u32) {
-		use sp_runtime::RuntimeAppPublic;
 		use system::offchain::SubmitSignedTransaction;
 
 		let call = Call::do_something(price);
-
-		let res = T::SubmitTransaction::submit_signed(
-			//crypto::Public::all(),
-			Vec::new(),
-			call
-		);
+		let res = T::SubmitTransaction::submit_signed(call);
 
 		if res.is_empty() {
 			debug::error!("No local accounts found.");
+		} else {
+			debug::info!("Sent transactions from: {:?}", res);
 		}
 	}
 }
