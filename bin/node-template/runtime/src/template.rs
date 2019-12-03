@@ -53,15 +53,14 @@ decl_module! {
 			Ok(())
 		}
 
-		fn offchain_worker() {
+		fn offchain_worker(block_number: T::BlockNumber) {
 			//debug::RuntimeLogger::init();
 			let something = Something::get();
-			debug::info!("Hello World from offchain workers!");
-			debug::info!("Something is: {:?}", something);
+			debug::warn!("Hello World from offchain workers!");
+			debug::warn!("Something is: {:?}", something);
 
-			let block_number = <system::Module<T>>::block_number();
 			let block_hash = <system::Module<T>>::block_hash(block_number);
-			debug::info!("Current block is: {:?} ({:?})", block_number, block_hash);
+			debug::warn!("Current block is: {:?} ({:?})", block_number, block_hash);
 		}
 	}
 }
