@@ -8,8 +8,10 @@
 /// For more guidance on Substrate modules, see the example module
 /// https://github.com/paritytech/substrate/blob/master/frame/example/src/lib.rs
 
-use support::{decl_module, decl_storage, decl_event, dispatch::Result, debug};
+use support::{decl_module, decl_storage, decl_event, dispatch, debug};
 use system::ensure_signed;
+use sp_runtime::offchain::http;
+use rstd::vec::Vec;
 
 /// The module's configuration trait.
 pub trait Trait: system::Trait {
@@ -40,7 +42,7 @@ decl_module! {
 		// Just a dummy entry point.
 		// function that can be called by the external world as an extrinsics call
 		// takes a parameter of the type `AccountId`, stores it and emits an event
-		pub fn do_something(origin, something: u32) -> Result {
+		pub fn do_something(origin, something: u32) -> dispatch::Result {
 			// TODO: You only need this if you want to check it was signed.
 			let who = ensure_signed(origin)?;
 
@@ -54,14 +56,37 @@ decl_module! {
 		}
 
 		fn offchain_worker(block_number: T::BlockNumber) {
-			//debug::RuntimeLogger::init();
+			debug::RuntimeLogger::init();
 			let something = Something::get();
 			debug::warn!("Hello World from offchain workers!");
 			debug::warn!("Something is: {:?}", something);
 
 			let block_hash = <system::Module<T>>::block_hash(block_number);
 			debug::warn!("Current block is: {:?} ({:?})", block_number, block_hash);
+
+			if let Err(e) = Self::fetch_btc_price() {
+				debug::warn!("Error fetching BTC price: {:?}", e);
+			}
 		}
+	}
+}
+
+impl<T: Trait> Module<T> {
+	fn fetch_btc_price() -> Result<(), http::Error> {
+		let pending = http::Request::get(
+			"https://min-api.cryptocompare.com/data/price?fsym=BTC&tsyms=USD"
+		).send().map_err(|_| http::Error::IoError)?;
+
+		let response = pending.wait()?;
+		if response.code != 200 {
+			debug::warn!("Unexpected status code: {}", response.code);
+			return Err(http::Error::Unknown);
+		}
+
+		let body = response.body().collect::<Vec<u8>>();
+		debug::warn!("Body: {:?}", core::str::from_utf8(&body).ok());
+
+		Ok(())
 	}
 }
 
