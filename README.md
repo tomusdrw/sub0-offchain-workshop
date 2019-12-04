@@ -108,7 +108,7 @@ let price = match Self::fetch_btc_price() {
 	type Call: From<Call<Self>>;
 
 	/// Transaction submitter.
-	type SubmitTransaction: offchain::SubmitSignedTransaction<Self, <Self as Trait>::Call>;
+	type SubmitTransaction: system::offchain::SubmitSignedTransaction<Self, <Self as Trait>::Call>;
 ```
 
 #### 6.2. Add app-crypto stuff.
@@ -127,8 +127,11 @@ let price = match Self::fetch_btc_price() {
 #### 6.3. Implement CreateTransaction for the runtime.
 
 ```rust
+  /// The payload being signed in transactions.
+  pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
+
   impl system::offchain::CreateTransaction<Runtime, UncheckedExtrinsic> for Runtime {
-    type Public = <Signature as traits::Verify>::Signer;
+    type Public = <Signature as sp_runtime::traits::Verify>::Signer;
     type Signature = Signature;
 
     fn create_transaction<TSigner: system::offchain::Signer<Self::Public, Self::Signature>>(
@@ -136,9 +139,9 @@ let price = match Self::fetch_btc_price() {
       public: Self::Public,
       account: AccountId,
       index: Index,
-    ) -> Option<(Call, <UncheckedExtrinsic as traits::Extrinsic>::SignaturePayload)> {
+    ) -> Option<(Call, <UncheckedExtrinsic as sp_runtime::traits::Extrinsic>::SignaturePayload)> {
       let period = 1 << 8;
-      let current_block = System::block_number().saturated_into::<u64>();
+      let current_block = System::block_number() as u64;
       let tip = 0;
       let extra: SignedExtra = (
         system::CheckVersion::<Runtime>::new(),
@@ -147,7 +150,6 @@ let price = match Self::fetch_btc_price() {
         system::CheckNonce::<Runtime>::from(index),
         system::CheckWeight::<Runtime>::new(),
         transaction_payment::ChargeTransactionPayment::<Runtime>::from(tip),
-        Default::default(),
       );
       let raw_payload = SignedPayload::new(call, extra).ok()?;
       let signature = TSigner::sign(public, &raw_payload)?;
@@ -162,14 +164,11 @@ let price = match Self::fetch_btc_price() {
 
 ```rust
 fn submit_btc_price_on_chain(price: u32) {
-	use sp_runtime::RuntimeAppPublic;
 	use system::offchain::SubmitSignedTransaction;
 
 	let call = Call::do_something(price);
 
 	let res = T::SubmitTransaction::submit_signed(
-		//crypto::Public::all(),
-		Vec::new(),
 		call
 	);
 
