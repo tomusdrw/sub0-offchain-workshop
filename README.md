@@ -6,7 +6,7 @@ $ git clone --depth 1 --branch td-sub0-offchain-workshop https://github.com/pari
 ### 2. Add offchain worker that prints `Hello World!'
 Compile & run
 ```bash
-$ cargo remote -- run -p node-template -- --dev -lruntime=trace
+$ cargo run -p node-template -- --dev -lruntime=trace
 ```
 
 ### 3. Either print or `debug::warn`, also show logger
