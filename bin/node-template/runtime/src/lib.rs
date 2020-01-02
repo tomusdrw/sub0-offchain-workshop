@@ -252,7 +252,7 @@ impl system::offchain::CreateTransaction<Runtime, UncheckedExtrinsic> for Runtim
 		account: AccountId,
 		index: Index,
 	) -> Option<(Call, <UncheckedExtrinsic as traits::Extrinsic>::SignaturePayload)> {
-		let period = 1 << 8;
+		let period = 1 << 7;
 		let current_block = System::block_number() as u64;
 		let tip = 0;
 		let extra: SignedExtra = (
