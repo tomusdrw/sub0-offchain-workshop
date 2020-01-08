@@ -8,12 +8,12 @@
 /// For more guidance on Substrate modules, see the example module
 /// https://github.com/paritytech/substrate/blob/master/frame/example/src/lib.rs
 
-use support::{decl_module, decl_storage, decl_event, dispatch, debug};
+use frame_support::{decl_module, decl_storage, decl_event, dispatch, debug};
 use system::{ensure_signed, offchain};
 use sp_runtime::offchain::http;
-use rstd::vec::Vec;
+use sp_std::vec::Vec;
 
-use primitives::crypto::KeyTypeId;
+use sp_core::crypto::KeyTypeId;
 pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"btc!");
 
 pub mod crypto {
@@ -51,7 +51,7 @@ decl_module! {
 		// this is needed only if you are using events in your module
 		fn deposit_event() = default;
 
-		pub fn submit_btc_price(origin, price: u32) -> dispatch::Result {
+		pub fn submit_btc_price(origin, price: u32) -> dispatch::DispatchResult {
 			let who = ensure_signed(origin)?;
 
 			debug::info!("Adding to the average: {}", price);
@@ -86,7 +86,7 @@ decl_module! {
 			debug::warn!("Hello World from offchain workers!");
 			debug::warn!("Current price of BTC is: {:?}", average);
 
-			let block_hash = <system::Module<T>>::block_hash(block_number - 1);
+			let block_hash = <system::Module<T>>::block_hash(block_number - 1.into());
 			debug::warn!("Current block is: {:?} ({:?})", block_number, block_hash);
 
 			let price = match Self::fetch_btc_price() {

@@ -1,4 +1,4 @@
-// Copyright 2017-2019 Parity Technologies (UK) Ltd.
+// Copyright 2017-2020 Parity Technologies (UK) Ltd.
 // This file is part of Substrate.
 
 // Substrate is free software: you can redistribute it and/or modify
@@ -69,6 +69,7 @@ use proc_macro::TokenStream;
 /// * Map: `Foo: map hasher($hash) type => type`: Implements the
 ///   [`StorageMap`](../frame_support/storage/trait.StorageMap.html) trait using the
 ///   [`StorageMap generator`](../frame_support/storage/generator/trait.StorageMap.html).
+///   And [`StoragePrefixedMap`](../frame_support/storage/trait.StoragePrefixedMap.html).
 ///
 ///   `$hash` representing a choice of hashing algorithms available in the
 ///   [`Hashable`](../frame_support/trait.Hashable.html) trait.
@@ -89,6 +90,7 @@ use proc_macro::TokenStream;
 /// * Linked map: `Foo: linked_map hasher($hash) type => type`: Implements the
 ///   [`StorageLinkedMap`](../frame_support/storage/trait.StorageLinkedMap.html) trait using the
 ///   [`StorageLinkedMap generator`](../frame_support/storage/generator/trait.StorageLinkedMap.html).
+///   And [`StoragePrefixedMap`](../frame_support/storage/trait.StoragePrefixedMap.html).
 ///
 ///   `$hash` representing a choice of hashing algorithms available in the
 ///   [`Hashable`](../frame_support/trait.Hashable.html) trait.
@@ -118,6 +120,7 @@ use proc_macro::TokenStream;
 /// * Double map: `Foo: double_map hasher($hash1) u32, $hash2(u32) => u32`: Implements the
 ///   [`StorageDoubleMap`](../frame_support/storage/trait.StorageDoubleMap.html) trait using the
 ///   [`StorageDoubleMap generator`](../frame_support/storage/generator/trait.StorageDoubleMap.html).
+///   And [`StoragePrefixedMap`](../frame_support/storage/trait.StoragePrefixedMap.html).
 ///
 ///   `$hash1` and `$hash2` representing choices of hashing algorithms available in the
 ///   [`Hashable`](../frame_support/trait.Hashable.html) trait. They must be choosen with care, see
@@ -150,6 +153,7 @@ use proc_macro::TokenStream;
 /// * `twox_64_concat` - TwoX with 64bit + key concatenated.
 /// * `twox_128` - TwoX with 128bit.
 /// * `twox_256` - TwoX with with 256bit.
+/// * `blake2_128_concat` - Blake2 with 128bit + key concatenated.
 /// * `blake2_128` - Blake2 with 128bit.
 /// * `blake2_256` - Blake2 with 256bit.
 ///
