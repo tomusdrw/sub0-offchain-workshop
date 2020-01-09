@@ -546,6 +546,12 @@ pub enum InitKind {
 	Full,
 }
 
+impl Default for InitKind {
+	fn default() -> Self {
+		InitKind::Full
+	}
+}
+
 impl<T: Trait> Module<T> {
 	/// Deposits an event into this block's event record.
 	pub fn deposit_event(event: impl Into<T::Event>) {
@@ -643,9 +649,6 @@ impl<T: Trait> Module<T> {
 	}
 
 	/// Start the execution of a particular block.
-	///
-	/// Setting `is_for_inspection` flag will not cause the events
-	/// to be removed from the state.
 	pub fn initialize(
 		number: &T::BlockNumber,
 		parent_hash: &T::Hash,
